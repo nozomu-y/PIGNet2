@@ -1,6 +1,6 @@
 # @package data
 pda:
-  key_dir:
+  key_dir: ${hydra:runtime.config_sources\[1\].path}/../keys/train/PDBbind_v2020/pda
   data_dir:
   processed_data_dir:
   label_file:
