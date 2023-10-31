@@ -2,7 +2,7 @@
 #$ -cwd
 #$ -l q_node=1
 #$ -l h_rt=23:00:00
-#$ -N TRAINING
+#$ -N TRAIN_PDA_NDA
 #$ -o eo_file_train
 #$ -e eo_file_train
 
