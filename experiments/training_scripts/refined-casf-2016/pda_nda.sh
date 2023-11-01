@@ -4,7 +4,7 @@ SEED=0
 ROOT_DIR=$(git rev-parse --show-toplevel)
 DATA_DIR=${ROOT_DIR}/dataset/PDBbind-v2020
 EXE_DIR=${ROOT_DIR}/src
-EXPERIMENT_NAME=pda_nda/${SEED}
+EXPERIMENT_NAME=refined-casf-2016/pda_nda/${SEED}
 
 export CUDA_VISIBLE_DEVICES=$((0+${SEED}))
 

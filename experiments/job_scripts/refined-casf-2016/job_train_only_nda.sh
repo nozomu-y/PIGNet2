@@ -2,7 +2,7 @@
 #$ -cwd
 #$ -l q_node=1
 #$ -l h_rt=23:00:00
-#$ -N TRAIN_ONLY_PDA
+#$ -N TRAIN_ONLY_NDA
 #$ -o eo_file_train
 #$ -e eo_file_train
 
@@ -16,4 +16,4 @@ module list
 
 export NCCL_IB_DISABLE=1
 
-./training_scripts/only_pda.sh
+../../training_scripts/refined-casf-2016/only_nda.sh
