@@ -186,15 +186,12 @@ def get_stats(
 def write_predictions(
     model: Module,
     config: DictConfig,
-    train: bool,
+    datasplit: str,
 ) -> None:
     # model.predictions[task][key] -> [vdw, hbond, ml, hydro]
     # model.labels[task][key] -> label: float
 
-    if train:
-        prefix = "train_"
-    else:
-        prefix = "test_"
+    prefix = datasplit + "_"
 
     for task in model.predictions:
         keys = model.predictions[task].keys()
@@ -209,7 +206,7 @@ def write_predictions(
                     f.write(f"\t{energy:.3f}")
                 f.write("\n")
 
-    if train:
+    if datasplit == "train":
         try:
             with open("learnable_parameters.txt", "w") as f:
                 f.write(f"hydrophobic_coeff: {model.hydrophobic_coeff.item()}\n")
@@ -265,9 +262,11 @@ def get_log_line(
         values = ["epoch"]
         values += ["train_l_" + task for task in tasks]
         values += ["train_l_dvdw"]
+        values += ["val_l_" + task for task in tasks]
+        values += ["val_l_dvdw"]
         values += ["test_l_" + task for task in tasks]
         values += ["test_l_dvdw"]
-        values += ["train_r", "test_r", "train_tau", "test_tau", "time"]
+        values += ["train_r", "val_r", "test_r", "train_tau", "val_tau", "test_tau", "time"]
     else:
         values = [f"{losses[task]:.3f}" for task in tasks]
         values += [f"{losses['dvdw']:.3f}"]

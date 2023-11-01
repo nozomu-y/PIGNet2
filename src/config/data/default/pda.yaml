@@ -7,6 +7,7 @@ pda:
   loss_ratio: 1.0
   objective: regression
   train_result_path: train_pda.txt
+  val_result_path: val_pda.txt
   test_result_path: test_pda.txt
   n_samples: 0
   pos_noise_std:

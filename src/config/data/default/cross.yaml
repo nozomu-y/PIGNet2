@@ -8,6 +8,7 @@ cross:
   loss_ratio: 5.0
   objective: augment
   train_result_path: train_cross.txt
+  val_result_path: val_cross.txt
   test_result_path: test_cross.txt
   pos_noise_std:
   pos_noise_max:

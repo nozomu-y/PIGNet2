@@ -32,12 +32,14 @@ def _read_lines(path: str) -> List[str]:
 
 
 def read_keys(key_dir: str) -> Tuple[List[str], List[str]]:
-    """Read training keys and test keys from a dir.
+    """Read training keys, val keys and test keys from a dir.
 
     Returns:
         train_keys: List[str] | []
             Empty list if no 'train_keys.{pkl,txt}' exists under `key_dir`.
-        train_keys: List[str] | []
+        val_keys: List[str] | []
+            Empty list if no 'val_keys.{pkl,txt}' exists under `key_dir`.
+        test_keys: List[str] | []
             Empty list if no 'test_keys.{pkl,txt}' exists under `key_dir`.
     """
     # Check the key file paths.
@@ -47,13 +49,19 @@ def read_keys(key_dir: str) -> Tuple[List[str], List[str]]:
     else:
         train_keys = _read_lines(train_key_path)
 
+    val_key_path = _check_file(os.path.join(key_dir, "val_keys"))
+    if val_key_path is None:
+        val_keys = []
+    else:
+        val_keys = _read_lines(val_key_path)
+
     test_key_path = _check_file(os.path.join(key_dir, "test_keys"))
     if test_key_path is None:
         test_keys = []
     else:
         test_keys = _read_lines(test_key_path)
 
-    return train_keys, test_keys
+    return train_keys, val_keys, test_keys
 
 
 def read_labels(path) -> Dict[str, float]:

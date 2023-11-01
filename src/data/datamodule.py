@@ -34,18 +34,20 @@ class ComplexDataModule:
 
     # Lightning method
     def prepare_data(self) -> None:
-        # Prepare training & test keys.
+        # Prepare training, val & test keys.
         # Lightning intends to split data in `setup`,
         # but we do here because our splits are fixed.
         self.train_keys = defaultdict(list)
+        self.val_keys = defaultdict(list)
         self.test_keys = defaultdict(list)
         self.id_to_y = defaultdict(dict)
         self.selected_keys = defaultdict(list)
         self.metadata: Dict[str, pd.DataFrame] = dict()
 
         for task in self.tasks:
-            train_keys, test_keys = read_keys(self.config.data[task].key_dir)
+            train_keys, val_keys, test_keys = read_keys(self.config.data[task].key_dir)
             self.train_keys[task] = train_keys
+            self.val_keys[task] = val_keys
             self.test_keys[task] = test_keys
 
             if self.config.data[task].processed_data_dir is None:
@@ -57,11 +59,11 @@ class ComplexDataModule:
         self.filter_keys()
 
     def filter_keys(self) -> None:
-        """Filter `train_keys` and `test_keys` in-place.
+        """Filter `train_keys`, `val_keys` and `test_keys` in-place.
 
         Filtering list:
             1. RMSD
-                filter out keys s.t. RMSD < `{train,test}_min_rmsd`.
+                filter out keys s.t. RMSD < `{train,val,test}_min_rmsd`.
         """
         for task in self.tasks:
             data_config = self.config.data[task]
@@ -73,6 +75,9 @@ class ComplexDataModule:
                 self.train_keys[task] = index.intersection(
                     self.train_keys[task]
                 ).tolist()
+            if (min_rmsd := data_config.get("val_min_rmsd")) is not None:
+                index = metadata.query(f"`rmsd` >= {min_rmsd}").index
+                self.val_keys[task] = index.intersection(self.val_keys[task]).tolist()
             if (min_rmsd := data_config.get("test_min_rmsd")) is not None:
                 index = metadata.query(f"`rmsd` >= {min_rmsd}").index
                 self.test_keys[task] = index.intersection(self.test_keys[task]).tolist()
@@ -80,6 +85,7 @@ class ComplexDataModule:
     # Lightning method
     def setup(self) -> None:
         self.train_datasets = dict()
+        self.val_datasets = dict()
         self.test_datasets = dict()
 
         for task in self.tasks:
@@ -87,6 +93,10 @@ class ComplexDataModule:
             if self.config.data[task].processed_data_dir is not None:
                 train_dataset = ComplexDataset(
                     keys=self.train_keys[task],
+                    processed_data_dir=self.config.data[task].processed_data_dir,
+                )
+                val_dataset = ComplexDataset(
+                    keys=self.val_keys[task],
                     processed_data_dir=self.config.data[task].processed_data_dir,
                 )
                 test_dataset = ComplexDataset(
@@ -103,6 +113,12 @@ class ComplexDataModule:
                     pos_noise_std=getattr(self.config.data[task], "pos_noise_std", 0.0),
                     pos_noise_max=getattr(self.config.data[task], "pos_noise_max", 0.0),
                 )
+                val_dataset = ComplexDataset(
+                    keys=self.val_keys[task],
+                    data_dir=self.config.data[task].data_dir,
+                    id_to_y=self.id_to_y[task],
+                    conv_range=self.conv_range,
+                )
                 test_dataset = ComplexDataset(
                     keys=self.test_keys[task],
                     data_dir=self.config.data[task].data_dir,
@@ -111,6 +127,7 @@ class ComplexDataModule:
                 )
 
             self.train_datasets[task] = train_dataset
+            self.val_datasets[task] = val_dataset
             self.test_datasets[task] = test_dataset
 
     @property
@@ -130,8 +147,9 @@ class ComplexDataModule:
         size_dict = dict()
         for task in self.tasks:
             len_train = len(self.train_datasets[task])
+            len_val = len(self.val_datasets[task])
             len_test = len(self.test_datasets[task])
-            size_dict[task] = [len_train, len_test]
+            size_dict[task] = [len_train, len_val, len_test]
         return size_dict
 
     # Lightning method
@@ -153,7 +171,7 @@ class ComplexDataModule:
     def val_dataloader(self) -> Dict[str, DataLoader]:
         return {
             task: DataLoader(
-                self.test_datasets[task],
+                self.val_datasets[task],
                 batch_size=self.batch_size,
                 num_workers=self.num_workers,
                 shuffle=True,
@@ -208,6 +226,27 @@ class ComplexDataModule:
 
                 self.train_datasets[task].keys = keys
 
+                # val
+                pdb_to_files = defaultdict(list)
+                for key in self.val_keys[task]:
+                    if "_" in key:
+                        pdb = key.split("_")[0]
+                        pdb_to_files[pdb].append(key)
+
+                # keys = list(pdb_to_files.keys())
+                keys = []
+                for key, files in pdb_to_files.items():
+                    remained_files = set(files) - set(self.selected_keys[key])
+                    if len(remained_files) > n_samples:
+                        sampled_keys = random.sample(remained_files, n_samples)
+                    else:
+                        sampled_keys = remained_files
+                        self.remove_selected_keys(key)
+                    keys += sampled_keys
+                    self.selected_keys[key] += sampled_keys
+
+                self.val_datasets[task].keys = keys
+
                 # test
                 pdb_to_files = defaultdict(list)
                 for key in self.test_keys[task]:
@@ -238,7 +277,10 @@ class ComplexDataModule:
         train_counts = defaultdict(int)
         for key in self.train_datasets[task].keys:
             train_counts[key.split("_")[0]] += 1
+        val_counts = defaultdict(int)
+        for key in self.val_datasets[task].keys:
+            val_counts[key.split("_")[0]] += 1
         test_counts = defaultdict(int)
         for key in self.test_datasets[task].keys:
             test_counts[key.split("_")[0]] += 1
-        return sum(train_counts.values()), sum(test_counts.values())
+        return sum(train_counts.values()), sum(val_counts.values()), sum(test_counts.values())

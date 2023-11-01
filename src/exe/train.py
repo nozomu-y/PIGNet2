@@ -23,21 +23,24 @@ def run(
     data: ComplexDataModule,
     device: torch.device,
     optimizer: torch.optim.Optimizer,
-    train: bool,
+    datasplit: str,
 ):
-    if train:
+    if datasplit == "train":
         model.train()
         loaders = data.train_dataloader()
-    else:
+    elif datasplit == "val":
         model.eval()
         loaders = data.val_dataloader()
+    elif datasplit == "test":
+        model.eval()
+        loaders = data.test_dataloader()
 
     tasks = list(loaders.keys())
     for batch in tqdm(zip(*(loaders[task] for task in tasks))):
         batch = dict(zip(tasks, batch))
         batch = {task: batch[task].to(device) for task in batch}
 
-        if train:
+        if datasplit == "train":
             model.zero_grad()
             loss_total = model.training_step(batch)
             loss_total.backward()
@@ -98,13 +101,13 @@ def main(config: DictConfig):
             )
 
     # Tell data sizes.
-    logger.info("Number of data: training | test")
-    for task, (len_train, len_test) in data.size.items():
-        msg = f"\t'{task}': {len_train} | {len_test}"
+    logger.info("Number of data: training | val | test")
+    for task, (len_train, len_val, len_test) in data.size.items():
+        msg = f"\t'{task}': {len_train} | {len_val} | {len_test}"
         if (n_samples := getattr(config.data[task], "n_samples", 0)) > 0:
-            len_actual_train, len_actual_test = data.approximate_size(task)
+            len_actual_train, len_actual_val, len_actual_test = data.approximate_size(task)
             msg += f" Sampled {n_samples} per PDB"
-            msg += f" -> Approximately {len_actual_train} | {len_actual_test}"
+            msg += f" -> Approximately {len_actual_train} | {len_actual_val} | {len_actual_test}"
         logger.info(msg)
 
     # Tell model size.
@@ -119,22 +122,30 @@ def main(config: DictConfig):
 
         # Training
         model.reset_log()
-        run(model, data, device, optimizer, True)
+        run(model, data, device, optimizer, "train")
         train_losses = utils.get_losses(model)
         # Use "scoring" or, if unused, the first dataset for `get_stats`.
         task_name = "scoring"
         if task_name not in model.predictions:
             task_name = list(model.predictions.keys())[0]
         train_r, train_r2, train_tau = utils.get_stats(model, task_name)
-        utils.write_predictions(model, config, True)
+        utils.write_predictions(model, config, "train")
+
+        # Val
+        model.reset_log()
+        run(model, data, device, optimizer, "val")
+
+        val_losses = utils.get_losses(model)
+        val_r, val_r2, val_tau = utils.get_stats(model, task_name)
+        utils.write_predictions(model, config, "val")
 
         # Test
         model.reset_log()
-        run(model, data, device, optimizer, False)
+        run(model, data, device, optimizer, "test")
 
         test_losses = utils.get_losses(model)
         test_r, test_r2, test_tau = utils.get_stats(model, task_name)
-        utils.write_predictions(model, config, False)
+        utils.write_predictions(model, config, "test")
 
         end_time = time.time()
 
@@ -145,10 +156,13 @@ def main(config: DictConfig):
         log_elements = [
             str(epoch),
             utils.get_log_line(data.tasks, train_losses),
+            utils.get_log_line(data.tasks, val_losses),
             utils.get_log_line(data.tasks, test_losses),
             "{:.3f}".format(train_r),
+            "{:.3f}".format(val_r),
             "{:.3f}".format(test_r),
             "{:.3f}".format(train_tau),
+            "{:.3f}".format(val_tau),
             "{:.3f}".format(test_tau),
             "{:.3f}".format(end_time - start_time),
         ]
@@ -156,12 +170,16 @@ def main(config: DictConfig):
 
         # Write tensorboard
         writer.add_scalars("training loss", train_losses, epoch)
+        writer.add_scalars("val loss", val_losses, epoch)
         writer.add_scalars("test loss", test_losses, epoch)
         writer.add_scalar("R2/train", train_r2, epoch)
+        writer.add_scalar("R2/val", val_r2, epoch)
         writer.add_scalar("R2/test", test_r2, epoch)
         writer.add_scalar("R/train", train_r, epoch)
+        writer.add_scalar("R/val", val_r, epoch)
         writer.add_scalar("R/test", test_r, epoch)
         writer.add_scalar("tau/train", train_tau, epoch)
+        writer.add_scalar("tau/val", val_tau, epoch)
         writer.add_scalar("tau/test", test_tau, epoch)
 
         # Save the state.
