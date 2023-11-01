@@ -183,7 +183,22 @@ class ComplexDataModule:
         }
 
     # Lightning method
-    def test_dataloader(self) -> DataLoader:
+    def test_dataloader(self) -> Dict[str, DataLoader]:
+        return {
+            task: DataLoader(
+                self.test_datasets[task],
+                batch_size=self.batch_size,
+                num_workers=self.num_workers,
+                shuffle=True,
+                pin_memory=self.pin_memory,
+                worker_init_fn=seed_everything if self.seed is not None else None,
+                generator=self.generator if self.seed is not None else None,
+            )
+            for task in self.tasks
+        }
+
+    # Lightning method
+    def pred_dataloader(self) -> DataLoader:
         """Used for test and prediction.
         Assume only one dataset is used when this method is called.
         """
