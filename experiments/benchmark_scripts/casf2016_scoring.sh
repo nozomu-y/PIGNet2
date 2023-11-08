@@ -7,7 +7,7 @@ EPOCH=  # Select an epoch of the experiment
 ROOT_DIR=$(git rev-parse --show-toplevel)
 DATA_DIR=${ROOT_DIR}/dataset/Benchmark/scoring
 EXE_DIR=${ROOT_DIR}/src
-BENCHMARK_DIR=${ROOT_DIR}/experiments/outputs/benchmark/${EXP}/${SEED}
+BENCHMARK_DIR=${ROOT_DIR}/experiments/outputs/${EXP}/${SEED}
 
 date
 python -u ${EXE_DIR}/exe/test.py \

@@ -10,7 +10,7 @@ export CUDA_VISIBLE_DEVICES=$((0+${SEED}))
 
 date
 python -u ${EXE_DIR}/exe/train.py \
-  hydra.run.dir=${ROOT_DIR}/experiments/outputs/training/${EXPERIMENT_NAME} \
+  hydra.run.dir=${ROOT_DIR}/experiments/outputs/${EXPERIMENT_NAME} \
   experiment_name=${EXPERIMENT_NAME} \
   data=[messi/scoring] \
   data.scoring.root_data_dir=${DATA_DIR}/scoring \
