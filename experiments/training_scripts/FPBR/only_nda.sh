@@ -4,22 +4,23 @@ SEED=0
 ROOT_DIR=$(git rev-parse --show-toplevel)
 DATA_DIR=${ROOT_DIR}/dataset/PDBbind-v2020
 EXE_DIR=${ROOT_DIR}/src
-EXPERIMENT_NAME=pda_nda/${SEED}
+EXPERIMENT_NAME=FPBR/only_nda/${SEED}
 
 export CUDA_VISIBLE_DEVICES=$((0+${SEED}))
 
 date
 python -u ${EXE_DIR}/exe/train.py \
+  hydra.run.dir=${ROOT_DIR}/experiments/outputs/${EXPERIMENT_NAME} \
   experiment_name=${EXPERIMENT_NAME} \
-  data=[messi/pda,messi/docking,messi/cross,messi/random] \
-  data.pda.root_data_dir=${DATA_DIR}/pda \
-  data.pda.key_dir=${EXE_DIR}/keys/train/PDBbind_v2020/pda \
+  data=[messi/scoring,messi/docking,messi/cross,messi/random] \
+  data.scoring.root_data_dir=${DATA_DIR}/scoring \
+  data.scoring.key_dir=${EXE_DIR}/keys/train/FPBR/scoring \
   data.docking.root_data_dir=${DATA_DIR}/docking \
-  data.docking.key_dir=${EXE_DIR}/keys/train/PDBbind_v2020/docking \
+  data.docking.key_dir=${EXE_DIR}/keys/train/FPBR/docking \
   data.cross.root_data_dir=${DATA_DIR}/cross \
-  data.cross.key_dir=${EXE_DIR}/keys/train/PDBbind_v2020/cross \
+  data.cross.key_dir=${EXE_DIR}/keys/train/FPBR/cross \
   data.random.root_data_dir=${DATA_DIR}/random \
-  data.random.key_dir=${EXE_DIR}/keys/train/PDBbind_v2020/random \
+  data.random.key_dir=${EXE_DIR}/keys/train/FPBR/random \
   model=pignet_morse \
   model.short_range_A=2.1 \
   run.dropout_rate=0.1 \

@@ -23,7 +23,7 @@ def run(
 ):
     model.eval()
 
-    for batch in data.test_dataloader():
+    for batch in data.pred_dataloader():
         with torch.no_grad():
             model.test_step(batch.to(device))
 

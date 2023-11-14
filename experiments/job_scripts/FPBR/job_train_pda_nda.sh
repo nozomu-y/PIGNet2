@@ -16,4 +16,4 @@ module list
 
 export NCCL_IB_DISABLE=1
 
-./training_scripts/pda_nda.sh
+../../training_scripts/FPBR/pda_nda.sh

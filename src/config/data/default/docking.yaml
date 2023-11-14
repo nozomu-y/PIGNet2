@@ -8,6 +8,7 @@ docking:
   loss_ratio: 10.0
   objective: augment
   train_result_path: train_docking.txt
+  val_result_path: val_docking.txt
   test_result_path: test_docking.txt
   metadata_file: ${hydra:runtime.config_sources\[1\].path}/../data/rmsd/pdbbind-v2020_docking_rmsd.csv
   train_min_rmsd: 4.0
